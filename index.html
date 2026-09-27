@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="./apple-touch-icon.png">
 <meta name="application-name" content="Meine Finanzen">
 <meta name="apple-mobile-web-app-title" content="Meine Finanzen">
-<title>Meine Finanzen V4</title>
+<title>Meine Finanzen V5.2</title>
 <style>
 :root{--bg:#08101c;--p:#111c2e;--p2:#17243a;--line:#293a53;--txt:#f5f8fc;--mut:#9babc1;--acc:#65b1ff;--good:#52d39a;--bad:#ff7474;--warn:#ffd166;--shadow:0 12px 35px rgba(0,0,0,.20)}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -33,6 +33,16 @@ input,select,textarea,button{font-size:16px}
 .accountSummary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 @media(max-width:900px){.bookRow{grid-template-columns:1fr 1fr}.accountSummary{grid-template-columns:1fr 1fr}}
 @media(max-width:650px){.bookRow{grid-template-columns:1fr}.accountSummary{grid-template-columns:1fr}}
+.timeGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.timeCatRow{display:grid;grid-template-columns:1.4fr .8fr .8fr;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.timeCatRow:last-child{border-bottom:0}
+.timeHero{background:linear-gradient(135deg,rgba(101,177,255,.12),rgba(82,211,154,.08))}
+.sourceLine{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sourceDot{width:9px;height:9px;border-radius:50%;display:inline-block;background:var(--warn)}
+.timeResult{font-size:28px;font-weight:800;margin:8px 0}
+@media(max-width:900px){.timeGrid{grid-template-columns:1fr 1fr}}
+@media(max-width:650px){.timeGrid{grid-template-columns:1fr}.timeCatRow{grid-template-columns:1fr 1fr}.timeCatRow>div:first-child{grid-column:1/-1}}
+
 .analyticsGrid{display:grid;grid-template-columns:1fr;gap:14px}
 .chartWrap{position:relative;min-width:0}
 .analyticsCanvas{width:100%;height:310px;display:block;background:#0c1626;border:1px solid var(--line);border-radius:12px;touch-action:manipulation}
@@ -73,7 +83,7 @@ input,select,textarea,button{font-size:16px}
 
 <div id="app" class="wrap hidden">
   <div class="top">
-    <div class="brand"><h1>Meine Finanzen</h1><div class="muted">Web-App · V5.1.2</div></div>
+    <div class="brand"><h1>Meine Finanzen</h1><div class="muted">Web-App · V5.2</div></div>
     <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <button id="refreshBtn" class="btn" title="Daten neu aus dem lokalen Tresor laden">↻ Aktualisieren</button>
       <div class="secure">● Lokal & verschlüsselt</div>
@@ -87,6 +97,7 @@ input,select,textarea,button{font-size:16px}
     <button data-page="transactions">Buchungen</button>
     <button data-page="invoices">Rechnungen</button>
     <button data-page="analytics">Auswertung</button>
+    <button data-page="timeMoney">Zeit &amp; Geld</button>
     <button id="bookkeepingNav" class="hidden" data-page="bookkeeping">Buchhaltung</button>
     <button data-page="more">Mehr</button>
   </div>
@@ -231,6 +242,73 @@ input,select,textarea,button{font-size:16px}
     </div>
   </section>
 
+  <section id="timeMoney" class="hidden">
+    <div class="card timeHero">
+      <div class="detailHead">
+        <div>
+          <h2 style="margin-bottom:4px">Zeit &amp; Geld</h2>
+          <div class="small">Wie viel deiner tatsächlichen Arbeitszeit steckt in deinen Ausgaben? Bis zur Verbindung mit der Arbeitszeit-App trägst du die Monatsstunden einmal manuell ein.</div>
+        </div>
+        <input id="timeMonth" type="month" aria-label="Monat für Zeit und Geld">
+      </div>
+      <div class="sourceLine" style="margin-top:12px">
+        <span class="sourceDot"></span>
+        <span class="small" id="timeSourceText">Datenquelle Arbeitszeit: manuelle Eingabe</span>
+        <span class="pill">Arbeitszeit-App: vorbereitet</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Arbeitszeit für diesen Monat</h3>
+      <div class="formgrid">
+        <div>
+          <div class="small">Tatsächlich gearbeitete Stunden</div>
+          <input id="timeHoursInput" inputmode="decimal" placeholder="z. B. 168">
+        </div>
+        <div>
+          <div class="small">Stunden pro Arbeitstag</div>
+          <input id="timeDayHoursInput" inputmode="decimal" placeholder="z. B. 8">
+        </div>
+        <button id="saveTimeMoney" class="btn primary">Arbeitszeit speichern</button>
+      </div>
+      <p class="small">Später liefert die Arbeitszeit-App diese Werte automatisch. Die Finanz-App nutzt dann dieselbe Auswertung weiter.</p>
+    </div>
+
+    <div class="timeGrid">
+      <div class="card kpi"><span>Erkanntes Arbeitseinkommen</span><strong id="timeIncome">0,00 €</strong></div>
+      <div class="card kpi"><span>Gearbeitete Zeit</span><strong id="timeHours">0 h</strong></div>
+      <div class="card kpi"><span>Effektiver Wert je Stunde</span><strong id="timeHourly">—</strong></div>
+      <div class="card kpi"><span>Ausgaben in Arbeitszeit</span><strong id="timeExpenseHours">—</strong></div>
+    </div>
+
+    <div class="two">
+      <div class="card">
+        <h3>Was bedeutet dieser Monat?</h3>
+        <div id="timeMonthMeaning" class="notice"></div>
+      </div>
+      <div class="card">
+        <h3>Kauf in Arbeitszeit umrechnen</h3>
+        <div class="formgrid">
+          <input id="timePurchaseAmount" inputmode="decimal" placeholder="Betrag, z. B. 850">
+          <button id="timePurchaseCalc" class="btn">Umrechnen</button>
+        </div>
+        <div id="timePurchaseResult" class="timeResult">—</div>
+        <div id="timePurchaseDetail" class="small"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Ausgabenkategorien als Arbeitszeit</h3>
+      <div class="small" style="margin-bottom:8px">Die Werte basieren auf den tatsächlichen Ausgaben des ausgewählten Monats.</div>
+      <div id="timeCategoryRows"></div>
+    </div>
+
+    <div class="card">
+      <h3>Vorbereitung für die Arbeitszeit-App</h3>
+      <p class="small">Die Schnittstelle ist in der Datenstruktur bereits vorgesehen: pro Monat werden Arbeitsstunden, Stunden pro Arbeitstag, Datenquelle und Aktualisierungszeit gespeichert. Sobald wir beide Apps verbinden, kann die Arbeitszeit-App diese Monatswerte automatisch liefern – die Finanzdaten bleiben weiterhin in der Finanz-App.</p>
+    </div>
+  </section>
+
   <section id="bookkeeping" class="hidden">
     <div class="card">
       <div class="detailHead">
@@ -333,7 +411,7 @@ input,select,textarea,button{font-size:16px}
     </div>
   </section>
 
-  <div class="footer">V5.1 · Private Web-App · Daten lokal & verschlüsselt. Finanzdaten gehören niemals in dein GitHub-Repository.</div>
+  <div class="footer">V5.2 · Private Web-App · Daten lokal & verschlüsselt. Finanzdaten gehören niemals in dein GitHub-Repository.</div>
 </div>
 
 <div id="pasteModal" class="modal hidden">
@@ -401,7 +479,7 @@ async function dbClear(store){let d=await openDB();return new Promise((res,rej)=
 function arr(a){return Array.from(new Uint8Array(a))}
 function u8(a){return new Uint8Array(a)}
 async function derive(password,salt){let base=await crypto.subtle.importKey("raw",new TextEncoder().encode(password),"PBKDF2",false,["deriveKey"]);return crypto.subtle.deriveKey({name:"PBKDF2",salt:u8(salt),iterations:300000,hash:"SHA-256"},base,{name:"AES-GCM",length:256},false,["encrypt","decrypt"])}
-function freshState(){return{version:4.2,transactions:[],invoices:[],budgets:[],rules:[],settings:{balance:0,recipientCategories:{},customCategories:[]},history:[]}}
+function freshState(){return{version:5.2,transactions:[],invoices:[],budgets:[],rules:[],settings:{balance:0,recipientCategories:{},customCategories:[],timeMoney:{months:{},defaultDayHours:8}},history:[]}}
 async function encryptState(){let meta=await dbGet("meta","vault"),iv=crypto.getRandomValues(new Uint8Array(12)),plain=new TextEncoder().encode(JSON.stringify(state)),cipher=await crypto.subtle.encrypt({name:"AES-GCM",iv},key,plain);await dbPut("meta",{id:"vault",salt:meta.salt,iv:arr(iv),cipher:arr(cipher)})}
 async function init(){
  let v=await dbGet("meta","vault");
@@ -420,12 +498,15 @@ function ensureStateV42(){
  if(!state.settings.recipientCategories)state.settings.recipientCategories={};
  if(!state.settings.customCategories)state.settings.customCategories=[];
  if(typeof state.settings.bookkeepingEnabled!=="boolean")state.settings.bookkeepingEnabled=false;
+ if(!state.settings.timeMoney)state.settings.timeMoney={months:{},defaultDayHours:8};
+ if(!state.settings.timeMoney.months)state.settings.timeMoney.months={};
+ if(!Number.isFinite(Number(state.settings.timeMoney.defaultDayHours))||Number(state.settings.timeMoney.defaultDayHours)<=0)state.settings.timeMoney.defaultDayHours=8;
  for(const t of state.transactions||[]){
    if(!t.accounting)t.accounting={scope:"unknown",vatRate:0,note:""};
    if(!["business","private","unknown"].includes(t.accounting.scope))t.accounting.scope="unknown";
    if(!Number.isFinite(Number(t.accounting.vatRate)))t.accounting.vatRate=0;
  }
- state.version=5.1
+ state.version=5.2
 }
 function openApp(){ensureStateV42();$("lockScreen").classList.add("hidden");$("app").classList.remove("hidden");populateSelects();$("invDate").value=new Date().toISOString().slice(0,10);renderAll()}
 function lockApp(){key=null;state=null;selectedInvoiceFile=null;$("app").classList.add("hidden");$("lockScreen").classList.remove("hidden");$("unlockPassword").value="";init()}
@@ -919,6 +1000,104 @@ function bindAnalyticsCharts(){
  },{passive:true});
 }
 
+
+function timeMonthKey(){
+ const v=$("timeMonth")?.value;
+ return /^\d{4}-\d{2}$/.test(v||"")?v:new Date().toISOString().slice(0,7)
+}
+function timeMonthRecord(month){
+ const tm=state.settings.timeMoney||(state.settings.timeMoney={months:{},defaultDayHours:8});
+ if(!tm.months)tm.months={};
+ return tm.months[month]||null
+}
+function timeWorkIncome(month){
+ return (state.transactions||[])
+   .filter(t=>t.amount>0&&String(t.date).startsWith(month)&&t.category==="Gehalt / Einkommen")
+   .reduce((s,t)=>s+Number(t.amount||0),0)
+}
+function timeAllExpenses(month){
+ return (state.transactions||[])
+   .filter(t=>t.amount<0&&String(t.date).startsWith(month))
+   .reduce((s,t)=>s+Math.abs(Number(t.amount||0)),0)
+}
+function formatHours(h){
+ h=Number(h);
+ if(!Number.isFinite(h))return "—";
+ const sign=h<0?"−":"",a=Math.abs(h),whole=Math.floor(a),mins=Math.round((a-whole)*60);
+ if(mins===60)return `${sign}${whole+1} h`;
+ return mins?`${sign}${whole} h ${mins} min`:`${sign}${whole} h`
+}
+function timeMetrics(month){
+ const rec=timeMonthRecord(month),hours=Number(rec?.hours||0),dayHours=Number(rec?.dayHours||state.settings.timeMoney?.defaultDayHours||8);
+ const income=timeWorkIncome(month),expenses=timeAllExpenses(month);
+ const hourly=hours>0&&income>0?income/hours:0;
+ const expenseHours=hourly>0?expenses/hourly:0;
+ return{rec,hours,dayHours,income,expenses,hourly,expenseHours}
+}
+function setupTimeMonth(){
+ const el=$("timeMonth");
+ if(!el.value)el.value=new Date().toISOString().slice(0,7)
+}
+function renderTimeMoney(){
+ setupTimeMonth();
+ const month=timeMonthKey(),m=timeMetrics(month),rec=m.rec;
+ $("timeHoursInput").value=rec?.hours??"";
+ $("timeDayHoursInput").value=rec?.dayHours??state.settings.timeMoney?.defaultDayHours??8;
+ $("timeSourceText").textContent=rec?.source==="arbeitszeit-app"
+   ?"Datenquelle Arbeitszeit: Arbeitszeit-App"
+   :"Datenquelle Arbeitszeit: manuelle Eingabe";
+ $("timeIncome").textContent=euro(m.income);
+ $("timeHours").textContent=m.hours>0?formatHours(m.hours):"noch offen";
+ $("timeHourly").textContent=m.hourly>0?`${euro(m.hourly)} / h`:"—";
+ $("timeExpenseHours").textContent=m.hourly>0?formatHours(m.expenseHours):"—";
+
+ if(!m.hours){
+   $("timeMonthMeaning").innerHTML=`Für <b>${esc(month)}</b> fehlen noch die gearbeiteten Stunden. Trage sie oben ein. Danach übersetzt die App deine echten Ausgaben automatisch in Arbeitszeit.`;
+ }else if(!m.income){
+   $("timeMonthMeaning").innerHTML=`Für <b>${esc(month)}</b> wurden ${formatHours(m.hours)} Arbeitszeit gespeichert, aber noch kein positiver Eingang der Kategorie <b>Gehalt / Einkommen</b> erkannt. Ordne dein Gehalt entsprechend zu, damit der Stundenwert berechnet werden kann.`;
+ }else{
+   const days=m.dayHours>0?m.expenseHours/m.dayHours:0;
+   const remainder=m.income-m.expenses;
+   $("timeMonthMeaning").innerHTML=`Dein erkanntes Arbeitseinkommen von <b>${euro(m.income)}</b> bei <b>${formatHours(m.hours)}</b> ergibt einen effektiven Monatswert von <b>${euro(m.hourly)} je Arbeitsstunde</b>. Deine bisherigen Ausgaben von <b>${euro(m.expenses)}</b> entsprechen damit etwa <b>${formatHours(m.expenseHours)}</b>${m.dayHours>0?` bzw. <b>${days.toLocaleString("de-DE",{maximumFractionDigits:1})} Arbeitstagen</b>`:""}. Der finanzielle Monatssaldo aus Arbeitseinkommen minus Ausgaben liegt bei <b class="${remainder>=0?"goodtxt":"badtxt"}">${euro(remainder)}</b>.`;
+ }
+
+ const cats={};
+ (state.transactions||[]).filter(t=>t.amount<0&&String(t.date).startsWith(month)).forEach(t=>{
+   const c=t.category||"Unkategorisiert";
+   cats[c]=(cats[c]||0)+Math.abs(Number(t.amount||0))
+ });
+ const rows=Object.entries(cats).sort((a,b)=>b[1]-a[1]);
+ $("timeCategoryRows").innerHTML=rows.length?rows.map(([cat,amount])=>{
+   const h=m.hourly>0?amount/m.hourly:0;
+   return `<div class="timeCatRow"><div><b>${esc(cat)}</b></div><div>${euro(amount)}</div><div>${m.hourly>0?formatHours(h):"—"}</div></div>`
+ }).join(""):'<div class="emptyDetail">Für diesen Monat sind noch keine Ausgaben vorhanden.</div>';
+
+ if($("timePurchaseAmount").value)calcTimePurchase(false)
+}
+async function saveTimeMoney(){
+ setupTimeMonth();
+ const month=timeMonthKey(),hours=parseAmount($("timeHoursInput").value),dayHours=parseAmount($("timeDayHoursInput").value)||8;
+ if(hours<=0)return alert("Bitte die tatsächlich gearbeiteten Stunden des Monats eingeben.");
+ if(dayHours<=0)return alert("Bitte gültige Stunden pro Arbeitstag eingeben.");
+ if(!state.settings.timeMoney)state.settings.timeMoney={months:{},defaultDayHours:8};
+ if(!state.settings.timeMoney.months)state.settings.timeMoney.months={};
+ state.settings.timeMoney.defaultDayHours=dayHours;
+ state.settings.timeMoney.months[month]={hours,dayHours,source:"manual",updatedAt:new Date().toISOString()};
+ await encryptState();
+ renderTimeMoney()
+}
+function calcTimePurchase(showAlert=true){
+ const amount=parseAmount($("timePurchaseAmount").value),m=timeMetrics(timeMonthKey());
+ if(amount<=0){$("timePurchaseResult").textContent="—";$("timePurchaseDetail").textContent="Bitte einen Betrag eingeben.";return}
+ if(!m.hourly){
+   $("timePurchaseResult").textContent="Noch nicht berechenbar";
+   $("timePurchaseDetail").textContent="Dafür werden Arbeitsstunden und erkanntes Arbeitseinkommen im ausgewählten Monat benötigt.";
+   return
+ }
+ const h=amount/m.hourly,days=m.dayHours>0?h/m.dayHours:0;
+ $("timePurchaseResult").textContent=formatHours(h);
+ $("timePurchaseDetail").textContent=`${euro(amount)} entsprechen bei ${euro(m.hourly)} je Arbeitsstunde etwa ${formatHours(h)}${m.dayHours>0?` oder ${days.toLocaleString("de-DE",{maximumFractionDigits:1})} Arbeitstagen`:""}.`
+}
 function bookkeepingYears(){
  return [...new Set((state.transactions||[]).map(t=>String(t.date||"").slice(0,4)).filter(x=>/^\d{4}$/.test(x)))].sort().reverse()
 }
@@ -1013,7 +1192,7 @@ async function saveBalance(){state.settings.balance=parseAmount($("balanceInput"
 async function exportBackup(){
  let v=await dbGet("meta","vault"),files=await dbAll("files"),pack={magic:"MFIN4",vault:v,files};
  let blob=new Blob([JSON.stringify(pack)],{type:"application/octet-stream"});
- let name=`Meine-Finanzen-V5-${new Date().toISOString().slice(0,10)}.mfin`;
+ let name=`Meine-Finanzen-V5.2-${new Date().toISOString().slice(0,10)}.mfin`;
  try{
    const file=new File([blob],name,{type:"application/octet-stream"});
    if(navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
@@ -1043,9 +1222,9 @@ async function restoreBackupBeforeUnlock(file){
 async function importBackup(file){try{let p=JSON.parse(await file.text());if(p.magic!=="MFIN4"||!p.vault)throw 0;if(!confirm("Vorhandene lokale Daten vollständig durch dieses Backup ersetzen?"))return;await dbClear("meta");await dbClear("files");await dbPut("meta",p.vault);for(let f of p.files||[])await dbPut("files",f);alert("Backup importiert. Die App wird jetzt gesperrt.");lockApp()}catch(e){alert("Ungültiges V4-Backup.")}}
 async function clearAll(){if(!confirm("Wirklich ALLE lokalen Finanzdaten und Belege löschen?"))return;if(!confirm("Letzte Bestätigung: Dieser Vorgang kann ohne Backup nicht rückgängig gemacht werden."))return;await dbClear("files");await dbClear("meta");location.reload()}
 function populateSelects(){for(let id of ["invCategory","budgetCategory","ruleCategory"]){let old=$(id).value;$(id).innerHTML=allCategories().map(c=>`<option>${esc(c)}</option>`).join("");if([...$(id).options].some(o=>o.value===old))$(id).value=old}}
-function renderAll(){renderOverview();renderInbox();renderTransactions();renderInvoices();renderAnalytics();renderMore();renderBookkeeping()}
+function renderAll(){renderOverview();renderInbox();renderTransactions();renderInvoices();renderAnalytics();renderTimeMoney();renderMore();renderBookkeeping()}
 function goInvoices(){document.querySelector('[data-page="invoices"]').click()}
-document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");["overview","inbox","transactions","invoices","analytics","bookkeeping","more"].forEach(id=>$(id).classList.toggle("hidden",id!==b.dataset.page))});
+document.querySelectorAll(".nav button").forEach(b=>b.onclick=()=>{document.querySelectorAll(".nav button").forEach(x=>x.classList.remove("active"));b.classList.add("active");["overview","inbox","transactions","invoices","analytics","timeMoney","bookkeeping","more"].forEach(id=>$(id).classList.toggle("hidden",id!==b.dataset.page))});
 $("createVault").onclick=createVault;$("unlockVault").onclick=unlock;
 $("startupBackupFile").onchange=e=>{if(e.target.files[0])restoreBackupBeforeUnlock(e.target.files[0]);e.target.value=""};
 $("startupBackupFile2").onchange=e=>{if(e.target.files[0])restoreBackupBeforeUnlock(e.target.files[0]);e.target.value=""};$("refreshBtn").onclick=refreshApp;$("unlockPassword").onkeydown=e=>{if(e.key==="Enter")unlock()};$("lockBtn").onclick=lockApp;
@@ -1059,7 +1238,11 @@ const dz=$("dropZone");["dragenter","dragover"].forEach(ev=>dz.addEventListener(
 $("invoiceFile").onchange=e=>{selectInvoiceFile(e.target.files[0]||null);e.target.value=""};
 $("invoicePdf").onchange=e=>{selectInvoiceFile(e.target.files[0]||null);e.target.value=""};
 $("cameraFile").onchange=e=>{selectInvoiceFile(e.target.files[0]||null);e.target.value=""};
-$("applyLearnedRecipients").onclick=applyLearnedRecipientsToAll;$("reapplyRules").onclick=reapplyAllRules;$("bookkeepingEnabled").onchange=e=>setBookkeepingEnabled(e.target.checked);
+$("applyLearnedRecipients").onclick=applyLearnedRecipientsToAll;$("reapplyRules").onclick=reapplyAllRules;$("timeMonth").onchange=renderTimeMoney;
+$("saveTimeMoney").onclick=saveTimeMoney;
+$("timePurchaseCalc").onclick=()=>calcTimePurchase(true);
+$("timePurchaseAmount").onkeydown=e=>{if(e.key==="Enter")calcTimePurchase(true)};
+$("bookkeepingEnabled").onchange=e=>setBookkeepingEnabled(e.target.checked);
 $("bookYear").onchange=renderBookkeeping;
 $("bookSearch").oninput=renderBookkeeping;
 $("bookScope").onchange=renderBookkeeping;
